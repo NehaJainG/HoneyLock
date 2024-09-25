@@ -7,68 +7,86 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Security;
 import java.security.KeyPair;
+import java.security.interfaces.ECPrivateKey;
 
 public class Opaque {
   static {
     Security.addProvider(new BouncyCastleProvider());
   }
 
-  private final OPRF oprf;
-  private final AKE ake;
+  protected final OPRF oprf;
+  protected final AKE ake;
+  protected final HoneyEncryption he;
+
 
   public Opaque() {
     this.oprf = new OPRF();
     this.ake = new AKE();
+    this.he = new HoneyEncryption();
   }
-
   // Step 1: Client blinds the password and sends blinded password + public key to server
-  public BigInteger[] clientBlindsPassword(String password) throws Exception {
-    return oprf.blindPassword(password);
-  }
-
   // Step 2: Server evaluates OPRF and sends blinded result back to client
-  public BigInteger serverEvaluatesOPRF(BigInteger blindedPassword, BigInteger serverSecret) {
-    return oprf.evaluateOPRF(blindedPassword, serverSecret);
-  }
+  // Step 3: Client unblinds result to retrieve the random secret (high-entropy password), rw
+  // Step 4: Server sends c, public key of client stored
+  // Step 4: AKE - Generate shared secret key using ECDH for both
 
-  // Step 3: Client unblinds result to retrieve the random secret (high-entropy password)
-  public BigInteger clientUnblindsResult(BigInteger blindedResult, BigInteger blindingFactor) {
-    return oprf.unblindResult(blindedResult, blindingFactor);
-  }
-
-  // Step 4: AKE - Generate shared secret key using ECDH
-  public byte[] generatesSharedSecret(PrivateKey privateKey, PublicKey publicKey) throws Exception {
-    return ake.generateSharedSecret(privateKey, publicKey);
-  }
   // Example workflow of OPAQUE protocol
-  public void opaqueProtocol() throws Exception {
+  private void opaqueProtocol() throws Exception {
+    // AKE: Both parties generate key pairs
+    KeyPair clientKeyPair = ake.generateECKeyPair();
+    KeyPair serverKeyPair = ake.generateECKeyPair();
+
     // Client blinds password
     String password = "userpassword123";
-    BigInteger[] clientBlindedPassword = clientBlindsPassword(password);
-
-    // Server evaluates OPRF with server's secret key
     BigInteger serverSecret = new BigInteger("123456789");  // Server's secret key (example)
-    BigInteger serverResult = serverEvaluatesOPRF(clientBlindedPassword[0], serverSecret);
 
-    // Client unblinds result to get the high-entropy password (rw)
-    BigInteger highEntropyPassword = clientUnblindsResult(serverResult, clientBlindedPassword[1]);
+    //create rw
+    BigInteger[] blindPwd = oprf.blindPassword(password,clientKeyPair);
+    BigInteger blindRwd = oprf.evaluateOPRF(blindPwd[0],serverSecret);
+    BigInteger rwd = oprf.unblindResult(blindRwd,blindPwd[1]);
 
-    // AKE: Both parties generate key pairs
-    KeyPair clientKeyPair = oprf.generateECKeyPair();
-    KeyPair serverKeyPair = oprf.generateECKeyPair();
+    //encrypt the private key
+    BigInteger privateKey = ake.privateKeyToInt((ECPrivateKey) clientKeyPair.getPrivate());
+    String cipher = he.encrypt(privateKey,rwd);
 
-    // Client generates shared secret using AKE (ECDH)
-    byte[] clientSharedSecret = generatesSharedSecret(clientKeyPair.getPrivate(), serverKeyPair.getPublic());
+    //private key, public key of client is sent to server. Stored in server
+    System.out.println("keys sent to server. and gets stored");
 
-    // Server generates shared secret using AKE (ECDH)
-    byte[] serverSharedSecret = generatesSharedSecret(serverKeyPair.getPrivate(), clientKeyPair.getPublic());
+    //client decrypts the keys sent by server
+    BigInteger privateKeyD = he.decrypt(cipher,rwd);
+    System.out.println("before encryption: "+privateKey + "\ndecryted: " + privateKeyD);
+    PrivateKey clientPrivate = ake.intToPrivateKey(privateKeyD);
+    System.out.println(clientPrivate.toString());
 
-    // Verify that both parties have derived the same shared secret
-    if (java.util.Arrays.equals(clientSharedSecret, serverSharedSecret)) {
-      System.out.println("Shared secret established successfully!");
-    } else {
-      System.out.println("Failed to establish shared secret.");
+    BigInteger[] publicKey = ake.publicKeyToInt(serverKeyPair.getPublic());
+    PublicKey serverPublic = ake.intToPublicKey(publicKey[0],publicKey[1]);
+
+    //sessions generation
+    byte[] clientSK = ake.generateSharedSecret(clientPrivate, serverPublic);
+    byte[] serverSK = ake.generateSharedSecret(serverKeyPair.getPrivate(), clientKeyPair.getPublic());
+    System.out.println("Client session key: ");
+    display(clientSK);
+    System.out.println("Server session key: ");
+    display(serverSK);
+    System.out.println(clientKeyPair.getPrivate());
+    System.out.println(clientKeyPair.getPublic());
+
+
+
+    if (java.util.Arrays.equals(clientSK,serverSK)){
+      System.out.println("authenticated");
+    }else{
+      System.out.println("Not Succesful");
     }
+
+
+  }
+
+  public static void display(byte[] sk){
+    for(byte i : sk){
+      System.out.print(i);
+    }
+    System.out.println();
   }
 
   public static void main(String[] args) throws Exception {
