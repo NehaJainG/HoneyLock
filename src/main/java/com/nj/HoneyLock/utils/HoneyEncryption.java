@@ -1,3 +1,4 @@
+
 package com.nj.HoneyLock.utils;
 import java.math.BigInteger;
 import java.security.SecureRandom;
@@ -9,7 +10,7 @@ public class HoneyEncryption {
   private static BigInteger m2;
 
   public HoneyEncryption(){
-    m2 = new BigInteger("1234567890");
+    m2 = new BigInteger("1234567890"); //just for demo
   }
   // Parameters
   private static final int ENCODING_BITS = 256;  // Bit length for encoding message
@@ -47,7 +48,7 @@ public class HoneyEncryption {
   }
 
   // Encrypt the encoded message (S) using AES and rw (derived from OPRF)
-  private static String _encrypt(BigInteger encodedMessage, BigInteger r_w) throws Exception {
+  private static String encryptAES(BigInteger encodedMessage, BigInteger r_w) throws Exception {
     // Ensure r_w is 16 bytes for AES-128
     byte[] keyBytes = getFixedLengthKey(r_w);
     SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
@@ -59,7 +60,7 @@ public class HoneyEncryption {
   }
 
   // Decrypt the ciphertext using AES and rw (derived from OPRF)
-  private static BigInteger _decrypt(String cipherText, BigInteger r_w) throws Exception {
+  private static BigInteger decryptAES(String cipherText, BigInteger r_w) throws Exception {
     // Ensure r_w is 16 bytes for AES-128
     byte[] keyBytes = getFixedLengthKey(r_w);
     SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
@@ -72,10 +73,10 @@ public class HoneyEncryption {
 
   public String encrypt(BigInteger kU, BigInteger r_w) throws Exception{
     BigInteger encodedMessage = encodeMessage(kU, m2);
-    return _encrypt(encodedMessage,r_w);
+    return encryptAES(encodedMessage,r_w);
   }
   public BigInteger decrypt(String cipherText, BigInteger r_w) throws Exception{
-    BigInteger decMessage = _decrypt(cipherText, r_w);
+    BigInteger decMessage = decryptAES(cipherText, r_w);
     return decodeMessage(decMessage, m2);
   }
 
@@ -83,26 +84,21 @@ public class HoneyEncryption {
     try {
       // Sample private key (kU) and domain parameters (Zm2)
       BigInteger kU = new BigInteger("987654321");  // Example private key
-        // Example domain parameter
-
       // Assume r_w is derived from the OPRF process
       BigInteger r_w = new BigInteger("12345678901234567890");  // Example rw from OPRF
 
       // Client-side: Encode and encrypt the private key using rw
       System.out.println("Client: Encoding and encrypting the private key.");
       BigInteger encodedMessage = encodeMessage(kU, m2);
-      String cipherText = _encrypt(encodedMessage, r_w);
+      String cipherText = encryptAES(encodedMessage, r_w);
       System.out.println("Encrypted private key: " + cipherText);
-
-      // Server stores the ciphertext (no knowledge of the actual private key kU)
 
       // Client-side: Decrypt the private key with the correct key rw
       System.out.println("Client: Decrypting the private key using rw.");
-      BigInteger decryptedEncodedMessage = _decrypt(cipherText, r_w);
+      BigInteger decryptedEncodedMessage = decryptAES(cipherText, r_w);
       BigInteger decryptedPrivateKey = decodeMessage(decryptedEncodedMessage, m2);
       System.out.println("Decrypted private key: " + decryptedPrivateKey);
 
-      // If an incorrect key is used, it would result in a decoy message
     } catch (Exception e) {
       e.printStackTrace();
     }
