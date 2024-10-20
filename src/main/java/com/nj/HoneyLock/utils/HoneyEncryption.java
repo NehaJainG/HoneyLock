@@ -1,17 +1,16 @@
+package com.nj.HoneyLock.service.utils;
 
-package com.nj.HoneyLock.utils;
 import java.math.BigInteger;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import java.util.Base64;
 
 public class HoneyEncryption {
-  private static BigInteger m2;
 
-  public HoneyEncryption(){
-    m2 = new BigInteger("1234567890"); //just for demo
-  }
+  private static final BigInteger m2 = new BigInteger("115792089237316195423570985008687907853269984665640564039457584007913129639936");
   // Parameters
   private static final int ENCODING_BITS = 256;  // Bit length for encoding message
 
@@ -32,8 +31,9 @@ public class HoneyEncryption {
     }
     return fixedLengthKey;
   }
+
   // Encode the message (probabilistic encoding)
-  private static BigInteger encodeMessage(BigInteger kU, BigInteger m2) {
+  private static BigInteger encodeMessage(BigInteger kU) {
     BigInteger l = BigInteger.valueOf(ENCODING_BITS);
     BigInteger intervalStart = kU.multiply(BigInteger.TWO.pow(l.intValue())).divide(m2);
     BigInteger intervalEnd = (kU.add(BigInteger.ONE)).multiply(BigInteger.TWO.pow(l.intValue())).divide(m2);
@@ -42,7 +42,7 @@ public class HoneyEncryption {
   }
 
   // Decode the message (recover kU from the encoded message)
-  private static BigInteger decodeMessage(BigInteger encodedMessage, BigInteger m2) {
+  private static BigInteger decodeMessage(BigInteger encodedMessage) {
     BigInteger l = BigInteger.valueOf(ENCODING_BITS);
     return encodedMessage.multiply(m2).divide(BigInteger.TWO.pow(l.intValue()));
   }
@@ -67,17 +67,28 @@ public class HoneyEncryption {
 
     Cipher cipher = Cipher.getInstance("AES");
     cipher.init(Cipher.DECRYPT_MODE, keySpec);
-    byte[] plainText = cipher.doFinal(Base64.getDecoder().decode(cipherText));
-    return new BigInteger(plainText);
+    try {
+      byte[] plainText = cipher.doFinal(Base64.getDecoder().decode(cipherText));
+      return new BigInteger(plainText);
+    } catch (BadPaddingException e) {
+      // When wrong key used, generate plausible private key
+      return generateConsistentPrivateKey(r_w);    }
   }
 
-  public String encrypt(BigInteger kU, BigInteger r_w) throws Exception{
-    BigInteger encodedMessage = encodeMessage(kU, m2);
-    return encryptAES(encodedMessage,r_w);
+  // Generate a consistent private key based on r_w using SHA-256
+  private static BigInteger generateConsistentPrivateKey(BigInteger r_w) throws Exception {
+    MessageDigest digest = MessageDigest.getInstance("SHA-256");
+    byte[] hash = digest.digest(r_w.toByteArray());
+    return new BigInteger(1, hash);  // Create a BigInteger from the hash, ensuring positive value
   }
-  public BigInteger decrypt(String cipherText, BigInteger r_w) throws Exception{
+
+  public String encrypt(BigInteger kU, BigInteger r_w) throws Exception {
+    return encryptAES(kU, r_w);
+  }
+
+  public BigInteger decrypt(String cipherText, BigInteger r_w) throws Exception {
     BigInteger decMessage = decryptAES(cipherText, r_w);
-    return decodeMessage(decMessage, m2);
+    return decodeMessage(decMessage);
   }
 
   public static void main(String[] args) {
@@ -86,18 +97,20 @@ public class HoneyEncryption {
       BigInteger kU = new BigInteger("987654321");  // Example private key
       // Assume r_w is derived from the OPRF process
       BigInteger r_w = new BigInteger("12345678901234567890");  // Example rw from OPRF
+      BigInteger rw2 = new BigInteger("123456789000000097214");  // Example rw from OPRF
 
       // Client-side: Encode and encrypt the private key using rw
       System.out.println("Client: Encoding and encrypting the private key.");
-      BigInteger encodedMessage = encodeMessage(kU, m2);
+      BigInteger encodedMessage = encodeMessage(kU);
       String cipherText = encryptAES(encodedMessage, r_w);
       System.out.println("Encrypted private key: " + cipherText);
 
-      // Client-side: Decrypt the private key with the correct key rw
-      System.out.println("Client: Decrypting the private key using rw.");
-      BigInteger decryptedEncodedMessage = decryptAES(cipherText, r_w);
-      BigInteger decryptedPrivateKey = decodeMessage(decryptedEncodedMessage, m2);
-      System.out.println("Decrypted private key: " + decryptedPrivateKey);
+      BigInteger pt1 = decryptAES(cipherText,r_w);
+      System.out.println("correct key : "+decodeMessage(pt1));
+      // Client-side: Decrypt the private key with the wrong key rw
+      System.out.println("Client: Attempting to decrypt with incorrect key.");
+      BigInteger decoyPrivateKey = decryptAES(cipherText, rw2);
+      System.out.println("Generated decoy private key: " + decodeMessage(decoyPrivateKey));
 
     } catch (Exception e) {
       e.printStackTrace();
