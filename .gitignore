@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+##DATA
+src/main/java/com/nj/HoneyLock/Data
