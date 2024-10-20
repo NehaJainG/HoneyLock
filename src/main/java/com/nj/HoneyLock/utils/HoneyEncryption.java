@@ -1,4 +1,4 @@
-package com.nj.HoneyLock.service.utils;
+package com.nj.HoneyLock.utils;
 
 import java.math.BigInteger;
 import java.security.MessageDigest;

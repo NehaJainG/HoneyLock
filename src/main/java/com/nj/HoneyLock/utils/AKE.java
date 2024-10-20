@@ -1,4 +1,4 @@
-package com.nj.HoneyLock.service.utils;
+package com.nj.HoneyLock.utils;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
