@@ -1,6 +1,6 @@
-package com.nj.HoneyLock.client;
+package com.nj.HoneyLock.service;
 
-import com.nj.HoneyLock.model.User;
+import com.nj.HoneyLock.server.model.User;
 import com.nj.HoneyLock.utils.Opaque;
 
 import java.math.BigInteger;
@@ -12,7 +12,6 @@ import java.security.interfaces.ECPrivateKey;
 
 public class OpaqueClient extends Opaque {
   User user;
-  private BigInteger rwd;
   private String secret;
   private final KeyPair clientKeys;
 
@@ -23,41 +22,36 @@ public class OpaqueClient extends Opaque {
 
   public OpaqueClient() throws Exception {
     this.clientKeys = ake.generateECKeyPair();
-    this.user = new User("neha");
   }
 
-  public void generateRwd(String password, String secret) throws NoSuchAlgorithmException {
-    this.secret = secret;
-    this.rwd = oprf.generateRW(password,secret);
-  }
-
-  public User generateUserRecord() throws Exception {
+  public User setUser(String name, String username, String password, String secret) throws Exception {
+    //encrypt the private key
+    BigInteger rwd = generateRwd(password,secret);
     BigInteger privateKey = ake.formatPrivateKey((ECPrivateKey) clientKeys.getPrivate());
+    String cipher = he.encrypt(privateKey,rwd);
+
     String publicKey = ake.formatPublicKey(clientKeys.getPublic());
 
-    //encrypt the private key
-    String cipher = he.encrypt(privateKey,this.rwd);
-
-    this.user.setCipher(cipher);
-    this.user.setPublicKey(publicKey);
-    this.user.setSecret(this.secret);
-
-    return this.user;
+    return this.user = new User(username,name,cipher,publicKey,secret);
   }
 
-  public byte[] generateClientSK(User userRecord) throws Exception {
-     BigInteger privateKey = he.decrypt(userRecord.getCipher(),this.rwd);
+
+  public BigInteger generateRwd(String password, String secret) throws NoSuchAlgorithmException {
+    this.secret = secret;
+    return oprf.generateRW(password,secret);
+  }
+
+  public byte[] generateClientSK(User user, String password) throws Exception {
+    BigInteger rwd = generateRwd(password,user.getSecret());
+    BigInteger privateKey = he.decrypt(user.getCipher(),rwd);
     PrivateKey kU = ake.retrievePrivateKey(privateKey);
     PublicKey KS = ake.retrievePublicKey(user.getPublicKey());
     return  ake.generateSharedSecret(kU,KS);
   }
 
-
-
   public static void main(String[] args) throws Exception {
-  OpaqueClient c = new OpaqueClient();
-  c.generateRwd("neha@1234","1234567890");
-  c.generateUserRecord();
+    OpaqueClient c = new OpaqueClient();
+    c.setUser("Neha","neha123","neha@123","1234567890");
     System.out.println(c.user.toString());
   }
 
