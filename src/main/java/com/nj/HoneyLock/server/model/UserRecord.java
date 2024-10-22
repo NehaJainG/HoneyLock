@@ -1,6 +1,5 @@
 package com.nj.HoneyLock.server.model;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
@@ -9,7 +8,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.util.List;
 
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
 @Document(collection = "UserRecord")
 public class UserRecord {
@@ -21,20 +19,17 @@ public class UserRecord {
   String secret;
   List<String> keys;
 
+  public UserRecord(String userId, String username, String name, String cipher, String secret, List<String> keys) {
+    this.userId = userId;
+    this.username = username;
+    this.name = name;
+    this.cipher = cipher;
+    this.secret = secret;
+    this.keys = keys;
+  }
+
   public String getUserName() {
     return username;
-  }
-
-  public void setUserName(String username) {
-    this.username = username;
-  }
-
-  public String getUserId() {
-    return userId;
-  }
-
-  public void setUserId(String userId) {
-    this.userId = userId;
   }
 
   public String getName() {
