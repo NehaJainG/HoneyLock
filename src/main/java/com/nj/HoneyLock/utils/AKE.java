@@ -65,19 +65,19 @@ public class AKE {
   }
 
   // Convert Public Key to a simple Base64 String
-  public String formatPublicKey(PublicKey publicKey) {
+  public String formatPublicKey(ECPublicKey publicKey) {
     return Base64.getEncoder().encodeToString(publicKey.getEncoded());
   }
 
   // Convert Base64 String back to PublicKey
-  public PublicKey retrievePublicKey(String publicKeyString) throws Exception {
+  public ECPublicKey retrievePublicKey(String publicKeyString) throws Exception {
     byte[] publicKeyBytes = Base64.getDecoder().decode(publicKeyString);
     X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKeyBytes);
-    return keyFactory.generatePublic(publicKeySpec);
+    return (ECPublicKey) keyFactory.generatePublic(publicKeySpec);
   }
 
   //derive public key from private key
-  public PublicKey getPublic(ECPrivateKey privateKey) throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
+  public ECPublicKey getPublic(ECPrivateKey privateKey) throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
     ECParameterSpec params = privateKey.getParams();
     org.bouncycastle.jce.spec.ECParameterSpec bcSpec = org.bouncycastle.jcajce.provider.asymmetric.util.EC5Util
       .convertSpec(params);
@@ -87,7 +87,7 @@ public class AKE {
       bcW.getAffineXCoord().toBigInteger(),
       bcW.getAffineYCoord().toBigInteger());
     ECPublicKeySpec keySpec = new ECPublicKeySpec(w, params);
-    return KeyFactory
+    return (ECPublicKey) KeyFactory
       .getInstance("EC", BouncyCastleProvider.PROVIDER_NAME)
       .generatePublic(keySpec);
   }
