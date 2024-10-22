@@ -2,13 +2,18 @@ package com.nj.HoneyLock.hcServer;
 
 import com.nj.HoneyLock.hcServer.repo.HCRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
+@Service
 public class HoneyChecker {
-  @Autowired
-  private HCRepository hcRepository;
+  private final HCRepository hcRepository;
 
+  @Autowired
+  public HoneyChecker(HCRepository hcRepository){
+    this.hcRepository = hcRepository;
+  }
 
   public void saveUser(String userId, int index){
     //save the record in database
