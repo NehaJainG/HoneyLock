@@ -9,6 +9,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.interfaces.ECPrivateKey;
+import java.security.interfaces.ECPublicKey;
 
 public class OpaqueClient extends Opaque {
   User user;
@@ -30,7 +31,7 @@ public class OpaqueClient extends Opaque {
     BigInteger privateKey = ake.formatPrivateKey((ECPrivateKey) clientKeys.getPrivate());
     String cipher = he.encrypt(privateKey,rwd);
 
-    String publicKey = ake.formatPublicKey(clientKeys.getPublic());
+    String publicKey = ake.formatPublicKey((ECPublicKey) clientKeys.getPublic());
 
     return this.user = new User(username,name,cipher,publicKey,secret);
   }
