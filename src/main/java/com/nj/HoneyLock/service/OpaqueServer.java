@@ -6,24 +6,30 @@ import com.nj.HoneyLock.server.model.UserRecord;
 import com.nj.HoneyLock.server.repo.UserRepository;
 import com.nj.HoneyLock.utils.HoneywordGenerator;
 import com.nj.HoneyLock.utils.Opaque;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.PublicKey;
+import java.security.interfaces.ECPublicKey;
 import java.util.*;
 
+@Service
 public class OpaqueServer extends Opaque {
-  @Autowired
-  private UserRepository userRepository;
+  private final UserRepository userRepository;
+  private final HoneyChecker hc;
   KeyPair serverKeys;
   HoneywordGenerator gen;
-  HoneyChecker hc;
 
-  public OpaqueServer() throws Exception {
+  public OpaqueServer(UserRepository userRepository, HoneyChecker honeyChecker) throws Exception {
+    this.userRepository = userRepository;
+    this.hc = honeyChecker;
     this.serverKeys = ake.generateECKeyPair();
-    gen = new HoneywordGenerator(10);
-    hc=new HoneyChecker();
+    this.gen = new HoneywordGenerator(10);
+  }
+
+  public String getKServer(){
+    return ake.formatPublicKey((ECPublicKey) serverKeys.getPublic());
   }
 
 
@@ -41,13 +47,15 @@ public class OpaqueServer extends Opaque {
     List<String> honeywords = gen.generateHoneywords(pattern);
     System.out.println("***************************************************");
     System.out.println("HONEY WORDS:");
-    display(honeywords);
+    display1(honeywords);
     System.out.println("***************************************************");
 
     for (String honeyword : honeywords) {
       BigInteger honeyPrivateKey = he.decrypt(cipher,oprf.generateRW(honeyword,secret));
-      PublicKey honeyPublickey = ake.getPublic(ake.retrievePrivateKey(honeyPrivateKey));
-      honeyKeys.add(ake.formatPublicKey(honeyPublickey));
+      ECPublicKey honeyPublickey = ake.getPublic(ake.retrievePrivateKey(honeyPrivateKey));
+      String KU = ake.formatPublicKey(honeyPublickey);
+      System.out.println(ake.retrievePublicKey(KU));
+      honeyKeys.add(KU);
     }
     return honeyKeys;
   }
@@ -65,7 +73,7 @@ public class OpaqueServer extends Opaque {
 
   public UserRecord saveUserRecord(User user,String pattern) throws Exception {
     List<String> keys = generateHoneyKeys(pattern, user.getSecret(),user.getCipher());
-    String realKeys = user.getCipher();
+    String realKeys = user.getPublicKey();
     int index = shuffleKeys(realKeys,keys);
     //save the index
     hc.saveUser(user.getUsername(), index);
@@ -85,21 +93,22 @@ public class OpaqueServer extends Opaque {
   public User getUser(User user){
     UserRecord userRecord = getUserRecord(user.getUserName());
     user.setCipher(userRecord.getCipher());
-    user.setPublicKey(ake.formatPublicKey(serverKeys.getPublic()));
+    user.setPublicKey(ake.formatPublicKey((ECPublicKey) serverKeys.getPublic()));
     return user;
   }
 
-  List<byte[]> generateServerSK(UserRecord user) throws Exception {
+  public List<byte[]> generateServerSK(UserRecord user) throws Exception {
     List<byte[]> sessionKeys = new ArrayList<>();
     for (String publicKey: user.getKeys()) {
         PublicKey KU = ake.retrievePublicKey(publicKey);
        byte[] sk = ake.generateSharedSecret(serverKeys.getPrivate(), KU);
       sessionKeys.add(sk);
     }
+    display(sessionKeys);
     return sessionKeys;
   }
 
-  boolean authenticate(UserRecord user, byte[] clientSK) throws Exception {
+  public boolean authenticate(UserRecord user, byte[] clientSK) throws Exception {
     List<byte[]> serverSKs = generateServerSK(user);
     int realIndex = hc.getIndex(user.getUserName());
     for (int i = 0; i < serverSKs.size() ; i++) {
@@ -113,17 +122,43 @@ public class OpaqueServer extends Opaque {
     return false;
   }
 
-//  public static void main(String[] args) throws Exception {
-//    OpaqueServer s = new OpaqueServer();
-//    User user = new User("neha123","neha",
-//      "EBIlZx3rltPz3hI5ZFX1v2SjknrsGbul3OkAkjIRPliX0HdZvm7jPef0DtucPRm0bcJgf6zZuQwEw/EdDobSiQ==",
-//      "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5RV0/l277oayhBvAjxWzC6ePCpVk23bjkQDDOp/iNpfHMdtPlsg1WnPTpPdYarOJS7Y/Gw/iA/Si5wwaXyCRpA==",
-//      "1234567890");
-//   s.saveUserRecord(user,"ADS");
-//  }
-  private void display(List<String> list){
+  public static void main(String[] args) throws Exception {
+    OpaqueServer s = new OpaqueServer(null,null);
+    OpaqueClient c = new OpaqueClient();
+    String name = "Dhanush";
+    String username = "dj01";
+    String password = "hello@12";
+    String secret = "1234354462652453525456443";
+
+    //creating user
+    System.out.println("User is registering...");
+    User newUser = c.setUser(name,username,password,secret);
+    UserRecord user = s.saveUserRecord(newUser,"ADS");
+    //System.out.println("registration successful\n\n");
+
+    System.out.println("User requested for userRecord..");
+
+    System.out.println("authorised user....");
+    System.out.println("Authentication Success...");
+
+    byte[] clientSK = c.generateClientSK(newUser,password);
+    //UserRecord user = s.getUserRecord(username);
+
+    if(s.authenticate(user,clientSK)){
+      System.out.println("Authentication successfull...");
+    }else{
+      System.out.println("Authentication failed, password incorrect");
+    }
+  }
+  private void display1(List<String> list){
     for (String s : list) {
       System.out.println(s);
     }
   }
+  private void display(List<byte[]> list){
+    for (byte[] s : list) {
+      System.out.println(Arrays.toString(s));
+    }
+  }
+
 }
