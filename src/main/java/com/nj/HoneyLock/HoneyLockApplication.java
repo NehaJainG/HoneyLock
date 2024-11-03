@@ -35,8 +35,6 @@ public class HoneyLockApplication implements CommandLineRunner {
     OpaqueServer server = new OpaqueServer(userRepository,hc);
     OpaqueClient client = new OpaqueClient();
 
-    Register r = new Register(client,server);
-    //r.flow();
     System.out.println("************************************************************");
     System.out.println("Ended printing mongo objects");
     System.out.println("************************************************************");

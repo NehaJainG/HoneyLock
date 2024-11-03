@@ -40,7 +40,7 @@ public class AKE {
   // Method to generate EC key pair using the constant ECParameterSpec
   public KeyPair generateECKeyPair() throws Exception {
     KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("EC", "BC");  // Use BouncyCastle provider
-    keyPairGenerator.initialize(ecParameterSpec);  // Use constant ECParameterSpec
+    keyPairGenerator.initialize(ecParameterSpec);
     return keyPairGenerator.generateKeyPair();
   }
 

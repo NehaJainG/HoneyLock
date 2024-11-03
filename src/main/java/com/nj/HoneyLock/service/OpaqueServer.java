@@ -94,6 +94,7 @@ public class OpaqueServer extends Opaque {
     UserRecord userRecord = getUserRecord(user.getUserName());
     user.setCipher(userRecord.getCipher());
     user.setPublicKey(ake.formatPublicKey((ECPublicKey) serverKeys.getPublic()));
+    user.setSecret(userRecord.getSecret());
     return user;
   }
 
@@ -111,6 +112,7 @@ public class OpaqueServer extends Opaque {
   public boolean authenticate(UserRecord user, byte[] clientSK) throws Exception {
     List<byte[]> serverSKs = generateServerSK(user);
     int realIndex = hc.getIndex(user.getUserName());
+    System.out.println(realIndex+"realIndex");
     for (int i = 0; i < serverSKs.size() ; i++) {
       if (Arrays.equals(clientSK, serverSKs.get(i))){
         if(realIndex==i) System.out.println("\nSuccessfully authenticated...\n");
