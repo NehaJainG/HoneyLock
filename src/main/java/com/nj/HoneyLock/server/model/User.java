@@ -18,11 +18,8 @@ public class User {
     this.publicKey = publicKey;
     this.secret = secret;
   }
-
-
-
-  public User(String name){
-    this.name = name;
+  public User(String username){
+    this.username = username;
   }
 
   public String getSecret() {
@@ -60,7 +57,12 @@ public class User {
       "\n, name='" + name + '\'' +
       "\n, cipher='" + cipher + '\'' +
       "\n, publicKey='" + publicKey + '\'' +
+      "\n, secret='" + secret + '\'' +
       '}';
+  }
+
+  public void setUsername(String username) {
+    this.username = username;
   }
 
   public String getUserName() {
