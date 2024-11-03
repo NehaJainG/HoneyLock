@@ -12,15 +12,14 @@ const Login = () => {
 
     try {
       const response = await AuthService.login({ username, password });
-      console.log('Login successful:', response);
+      console.log('Login successful:', response.data);
+      setError(response.data);
       // Handle successful login here (e.g., redirect or save token)
     } catch (error) {
-      // If axios throws an error, it's often an object with several fields, so we should handle it accordingly
       if (error.response && error.response.data && error.response.data.message) {
         setError(error.response.data.message); // Set the specific error message from the response
       } else {
         console.log(error);
-        setError('Login successful'); // Default error message
       }
     }
   };

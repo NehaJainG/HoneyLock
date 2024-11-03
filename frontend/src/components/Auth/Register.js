@@ -10,11 +10,11 @@ const Register = () => {
 
     const handleRegister = async (e) => {
         e.preventDefault();
-        const user = {username, name, password };
-
+        setError(null);
         try {
-            const response = await AuthService.register(user);
+            const response = await AuthService.register({username, name, password });
             console.log('Registration successful:', response);
+            setError(response.data);
         } catch (error) {
             setError(error.response ? error.response.data.message : "Registration failure");
             console.error('Registration failed:', error);
