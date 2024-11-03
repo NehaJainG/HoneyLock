@@ -7,6 +7,7 @@ import com.nj.HoneyLock.service.OpaqueServer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.HashMap;
 
 
@@ -20,23 +21,29 @@ public class UserController {
 
   // Register a new user
   @PostMapping("/register")
-  public UserRecord registerUser(@RequestBody HashMap<String, String> userData) throws Exception {
+  public String registerUser(@RequestBody User userData) throws Exception {
     System.out.println(userData);
-    String name = userData.get("name");
-    String username = userData.get("username");
-    String password = userData.get("password");
-    String secret = "1234567890";  // example secret; this could be generated dynamically
+    String name = userData.getName();
+    String username = userData.getUsername();
+    String password = userData.getCipher();
+    String secret = userData.getSecret();  // example secret; this could be generated dynamically
+
+    if(opaqueServer.getUserRecord(username) != null){
+      return "User already exists";
+    }
 
     OpaqueClient opaqueClient = new OpaqueClient();
     User user = opaqueClient.setUser(name, username, password, secret);
-    return opaqueServer.saveUserRecord(user, "ADS"); // Save user with a specified pattern
+    opaqueServer.saveUserRecord(user, "ADS");
+    return "Registration Successful";
   }
 
   // Authenticate an existing user
-  @PostMapping("/authenticate")
-  public String authenticateUser(@RequestBody HashMap<String, String> loginData) throws Exception {
-    String username = loginData.get("username");
-    String password = loginData.get("password");
+  @PostMapping("/login")
+  public String authenticateUser(@RequestBody User loginData) throws Exception {
+    System.out.println(loginData);
+    String username = loginData.getUsername();
+    String password = loginData.getCipher();
 
     User user = new User(username);
     OpaqueClient opaqueClient = new OpaqueClient();
@@ -47,9 +54,12 @@ public class UserController {
       return "User not found";
     }
     user = opaqueServer.getUser(user);
+    System.out.println(user.toString());
+    System.out.println(userRecord.toString());
 
     // Generate client session key
     byte[] clientSK = opaqueClient.generateClientSK(user, password);
+    System.out.println("client" + Arrays.toString(clientSK));
     boolean isAuthenticated = opaqueServer.authenticate(userRecord, clientSK);
 
     return isAuthenticated ? "Authenticated successfully" : "Authentication failed";
